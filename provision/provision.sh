@@ -42,13 +42,6 @@ apt-get -y install openssh-server
 mkdir /var/run/sshd
 sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
 
-#keys
-mkdir -p /root/.ssh
-chmod 700 /root/.ssh
-chown root:root /root/.ssh
-cp /provision/keys/insecure_key.pub /root/.ssh/authorized_keys
-chmod 600 /root/.ssh/authorized_keys
-
 # ------------------------------------------------------------------------------
 # cron
 # ------------------------------------------------------------------------------
