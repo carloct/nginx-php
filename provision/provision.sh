@@ -3,6 +3,8 @@
 # Provisioning script for the docker-laravel web server stack
 # ------------------------------------------------------------------------------
 
+export DEBIAN_FRONTEND=noninteractive
+
 apt-get update
 
 # Update System Packages
@@ -11,17 +13,31 @@ apt-get -y upgrade
 echo "LC_ALL=en_US.UTF-8" >> /etc/default/locale
 locale-gen en_US.UTF-8
 
-# ------------------------------------------------------------------------------
-# curl
-# ------------------------------------------------------------------------------
 
-apt-get -y install curl libcurl3 libcurl3-dev php5-curl
+# Install Some PPAs
+
+apt-get install -y software-properties-common curl
+
+apt-add-repository ppa:nginx/stable -y
+apt-add-repository ppa:rwky/redis -y
+apt-add-repository ppa:ondrej/php-7.0 -y
+
+# Update Package Lists
+
+apt-get update
+
+sed -i -e "s/exit\s*101/exit 0/g" /usr/sbin/policy-rc.d
+
+# ------------------------------------------------------------------------------
+# Install Some Basic Packages
+# ------------------------------------------------------------------------------
+# Install python (required for Supervisor)
+apt-get -y install python software-properties-common nano git libmcrypt4 libpcre3-dev \
+whois vim
 
 # ------------------------------------------------------------------------------
 # Supervisor
 # ------------------------------------------------------------------------------
-
-apt-get -y install python # Install python (required for Supervisor)
 
 mkdir -p /etc/supervisord/
 mkdir /var/log/supervisord
@@ -40,7 +56,6 @@ easy_install supervisor
 
 apt-get -y install openssh-server
 mkdir /var/run/sshd
-sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
 
 # ------------------------------------------------------------------------------
 # cron
@@ -48,27 +63,15 @@ sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_
 
 apt-get -y install cron
 
-# ------------------------------------------------------------------------------
-# nano
-# ------------------------------------------------------------------------------
-
-apt-get -y install nano
-apt-get -y install software-properties-common
-
-# ------------------------------------------------------------------------------
-# Install some PPAs
-# ------------------------------------------------------------------------------
-apt-add-repository ppa:nginx/stable -y
-apt-add-repository ppa:ondrej/php5-5.6 -y
-
-apt-get update
+# Set My Timezone
+ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime
 
 # ------------------------------------------------------------------------------
 # NGINX web server
 # ------------------------------------------------------------------------------
 
 # install nginx
-apt-get -y install nginx
+apt-get install -y --force-yes nginx php7.0-fpm
 
 # copy a development-only default site configuration
 cp /provision/conf/nginx-development /etc/nginx/sites-available/default
@@ -77,36 +80,21 @@ cp /provision/conf/nginx-development /etc/nginx/sites-available/default
 echo "daemon off;" >> /etc/nginx/nginx.conf
 
 # ------------------------------------------------------------------------------
-# PHP5
+# PHP7
 # ------------------------------------------------------------------------------
 
-# install PHP, PHP mcrypt extension and PHP MySQL native driver
-apt-get -y install php5-fpm php5-cli php5-mcrypt php5-mysqlnd php-pear php5-sqlite php-apc php5-json php5-curl
+apt-get install -y --force-yes php7.0-cli php7.0-dev \
+php-sqlite3 php-gd \
+php-curl \
+php-imap php-mysql
 
 # copy FPM and CLI PHP configurations
-cp /provision/conf/php.fpm.ini /etc/php5/fpm/php.ini
-cp /provision/conf/php.cli.ini /etc/php5/cli/php.ini
-
-# enable PHP mcrypt extension
-php5enmod mcrypt
+cp /provision/conf/php.fpm.ini /etc/php/7.0/fpm/php.ini
+cp /provision/conf/php.cli.ini /etc/php/7.0/cli/php.ini
 
 # disable 'daemonize' in php5-fpm (because we use supervisor instead)
-sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php5/fpm/php-fpm.conf
+sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/7.0/fpm/php-fpm.conf
 
-#-------------------------------------------------------------------------------
-# Install HHVM
-#-------------------------------------------------------------------------------
-#wget -O - http://dl.hhvm.com/conf/hhvm.gpg.key | apt-key add -
-#echo deb http://dl.hhvm.com/ubuntu trusty main | tee /etc/apt/sources.list.d/hhvm.list
-#apt-get update
-#apt-get install -y hhvm
-
-# ------------------------------------------------------------------------------
-# Git version control
-# ------------------------------------------------------------------------------
-
-# install git
-apt-get -y install git
 
 # ------------------------------------------------------------------------------
 # Composer PHP dependency manager
@@ -115,13 +103,6 @@ apt-get -y install git
 # install the latest version of composer
 php -r "readfile('https://getcomposer.org/installer');" | php
 mv composer.phar /usr/local/bin/composer
-
-# ------------------------------------------------------------------------------
-# XDEBUG (installed but disabled by default)
-# ------------------------------------------------------------------------------
-
-apt-get -y install php5-xdebug
-cp /provision/conf/xdebug.ini /etc/php5/mods-available/xdebug.ini
 
 # ------------------------------------------------------------------------------
 # Clean up
